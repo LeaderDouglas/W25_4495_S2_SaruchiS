@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "164659582194",
+    "project_id": "pathseeker-80008",
+    "storage_bucket": "pathseeker-80008.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:164659582194:android:9ccacde869c012445eac6b",
+        "android_client_info": {
+          "package_name": "com.PATHSEEKER"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBSo-VpjZDui9OlQy5cc0r_XIWZZVrjAMw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
