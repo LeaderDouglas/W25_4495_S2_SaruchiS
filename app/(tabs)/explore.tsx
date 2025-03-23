@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -9,12 +9,15 @@ import {
   Modal,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/Colors";
 import ProfileComponent from "@/components/profile/profileComponent";
 import { moderateScale } from "@/constants/responsive";
+import auth from "@react-native-firebase/auth";
+import firestore from "@react-native-firebase/firestore";
 
 const ALL_INTERESTS = [
   "Software Development",
@@ -45,30 +48,128 @@ const getJobRecommendations = (interests: string[]) => {
       { title: "Product Designer", company: "Creative Studios" },
       { title: "UX Researcher", company: "User Experience Ltd." },
     ],
+    "Machine Learning": [
+      { title: "ML Engineer", company: "AI Solutions" },
+      { title: "Computer Vision Specialist", company: "Vision Tech" },
+    ],
+    "Cybersecurity": [
+      { title: "Security Analyst", company: "SecureNet" },
+      { title: "Penetration Tester", company: "Cyber Defense Inc." },
+    ],
+    "Cloud Computing": [
+      { title: "Cloud Architect", company: "Cloud Systems" },
+      { title: "DevOps Engineer", company: "CloudOps" },
+    ],
+    "Product Management": [
+      { title: "Product Manager", company: "Product Labs" },
+      { title: "Product Owner", company: "Agile Solutions" },
+    ],
+    "Digital Marketing": [
+      { title: "Digital Marketing Specialist", company: "Marketing Pro" },
+      { title: "SEO Expert", company: "Search Solutions" },
+    ],
+    "Blockchain": [
+      { title: "Blockchain Developer", company: "Chain Technologies" },
+      { title: "Smart Contract Engineer", company: "Blockchain Innovations" },
+    ],
+    "Artificial Intelligence": [
+      { title: "AI Researcher", company: "AI Frontiers" },
+      { title: "NLP Engineer", company: "Language AI" },
+    ],
+    "Network Engineering": [
+      { title: "Network Engineer", company: "NetConnect" },
+      { title: "Network Security Specialist", company: "SecureNetwork" },
+    ],
+    "DevOps": [
+      { title: "DevOps Engineer", company: "Continuous Solutions" },
+      { title: "Site Reliability Engineer", company: "Reliability Tech" },
+    ],
   };
 
   return interests.flatMap((interest) => jobMap[interest] || []).slice(0, 4);
 };
 
 export default function ProfileScreen() {
-  const [user, setUser] = useState({
-    firstName: "Ajay",
-    lastName: "Pal Singh",
-    profileImage: null,
-  });
-
+  const [userDetails, setUserDetails] = useState<any>(null);
   const [interests, setInterests] = useState<string[]>([]);
   const [isInterestModalVisible, setInterestModalVisible] = useState(false);
   const [availableInterests, setAvailableInterests] = useState(ALL_INTERESTS);
-
+  const [isLoading, setIsLoading] = useState(true);
+  
   const router = useRouter();
 
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      setIsLoading(true);
+      const user = auth().currentUser;
+
+      if (user) {
+        try {
+          const userDoc = await firestore().collection("users").doc(user.uid).get();
+
+          if (userDoc.exists) {
+            const userData = userDoc.data();
+            setUserDetails(userData);
+            
+            // Load interests from Firestore if available
+            if (userData?.interests && Array.isArray(userData.interests)) {
+              setInterests(userData.interests);
+            }
+          } else {
+            console.log("No such document!");
+          }
+        } catch (error) {
+          console.error("Error fetching user details: ", error);
+          Alert.alert("Error", "Could not load user profile data");
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        console.log("No user is signed in.");
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserDetails();
+  }, []);
+
+  const saveInterestsToFirestore = async (newInterests: string[]) => {
+    const user = auth().currentUser;
+    
+    if (!user) {
+      Alert.alert("Error", "You must be signed in to save interests");
+      return false;
+    }
+    
+    try {
+      await firestore()
+        .collection("users")
+        .doc(user.uid)
+        .update({
+          interests: newInterests,
+          updatedAt: firestore.FieldValue.serverTimestamp(),
+        });
+      return true;
+    } catch (error) {
+      console.error("Error saving interests: ", error);
+      Alert.alert("Error", "Failed to save your interests");
+      return false;
+    }
+  };
+
   const toggleInterest = (interest: string) => {
-    setInterests((current) =>
-      current.includes(interest)
-        ? current.filter((i) => i !== interest)
-        : [...current, interest]
-    );
+    const newInterests = interests.includes(interest)
+      ? interests.filter((i) => i !== interest)
+      : [...interests, interest];
+    
+    setInterests(newInterests);
+  };
+
+  const handleSaveInterests = async () => {
+    const success = await saveInterestsToFirestore(interests);
+    if (success) {
+      setInterestModalVisible(false);
+    }
   };
 
   const renderInterestModal = () => (
@@ -81,7 +182,7 @@ export default function ProfileScreen() {
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Select Your Interests</Text>
-          <ScrollView>
+          <ScrollView style={styles.interestScrollView}>
             {availableInterests.map((interest) => (
               <TouchableOpacity
                 key={interest}
@@ -98,12 +199,20 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             ))}
           </ScrollView>
-          <TouchableOpacity
-            style={styles.modalCloseButton}
-            onPress={() => setInterestModalVisible(false)}
-          >
-            <Text style={styles.modalCloseButtonText}>Close</Text>
-          </TouchableOpacity>
+          <View style={styles.modalButtonRow}>
+            <TouchableOpacity
+              style={styles.modalCancelButton}
+              onPress={() => setInterestModalVisible(false)}
+            >
+              <Text style={styles.modalCancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalSaveButton}
+              onPress={handleSaveInterests}
+            >
+              <Text style={styles.modalSaveButtonText}>Save</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -117,10 +226,18 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>Job Recommendations</Text>
         {recommendations.length > 0 ? (
           recommendations.map((job, index) => (
-            <View key={index} style={styles.jobRecommendationItem}>
+            <TouchableOpacity 
+              key={index} 
+              style={styles.jobRecommendationItem}
+              onPress={() => Alert.alert(`${job.title}`, `Apply to ${job.company}`)}
+            >
               <Text style={styles.jobTitle}>{job.title}</Text>
               <Text style={styles.jobCompany}>{job.company}</Text>
-            </View>
+              <View style={styles.applyButtonContainer}>
+                <Text style={styles.applyButtonText}>Apply</Text>
+                <Ionicons name="arrow-forward" size={16} color={Colors.light.tint} />
+              </View>
+            </TouchableOpacity>
           ))
         ) : (
           <Text style={styles.noRecommendationsText}>
@@ -131,17 +248,25 @@ export default function ProfileScreen() {
     );
   };
 
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.light.tint} />
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.profileHeader}>
         <ProfileComponent
-          firstName="Ajay"
-          lastName="Pal Singh"
+          firstName={userDetails?.name || "G"}
+          lastName=""
           profileImage={null}
         />
         <View style={styles.userDetails}>
           <Text style={styles.userName}>
-            {user.firstName} {user.lastName}
+            {`${userDetails?.name || "Guest"}`}
           </Text>
           {/* <TouchableOpacity
             style={styles.editProfileButton}
@@ -188,6 +313,12 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "white",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: "white",
   },
   profileHeader: {
@@ -283,6 +414,9 @@ const styles = StyleSheet.create({
     padding: 16,
     maxHeight: "80%",
   },
+  interestScrollView: {
+    maxHeight: 400,
+  },
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
@@ -302,6 +436,34 @@ const styles = StyleSheet.create({
   },
   interestText: {
     fontSize: 16,
+  },
+  modalButtonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 16,
+  },
+  modalCancelButton: {
+    padding: 12,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 8,
+    flex: 1,
+    marginRight: 8,
+  },
+  modalCancelButtonText: {
+    textAlign: "center",
+    fontWeight: "bold",
+  },
+  modalSaveButton: {
+    padding: 12,
+    backgroundColor: Colors.light.tint,
+    borderRadius: 8,
+    flex: 1,
+    marginLeft: 8,
+  },
+  modalSaveButtonText: {
+    color: "white",
+    textAlign: "center",
+    fontWeight: "bold",
   },
   modalCloseButton: {
     marginTop: 16,
@@ -331,8 +493,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.light.tabIconDefault,
   },
+  applyButtonContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    marginTop: 8,
+  },
+  applyButtonText: {
+    color: Colors.light.tint,
+    fontWeight: "bold",
+    marginRight: 4,
+  },
   noRecommendationsText: {
     color: Colors.light.tabIconDefault,
     textAlign: "center",
+    marginTop: 8,
   },
 });
