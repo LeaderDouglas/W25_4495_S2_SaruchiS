@@ -2,10 +2,14 @@ import { View, Text, StyleSheet, Pressable, Alert } from "react-native";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Colors } from "@/constants/Colors";
 
-export default function HomeTopBar() {
+interface Props {
+  name:string
+}
+
+export default function HomeTopBar({name}:Props) {
   return (
     <View style={style.container}>
-      <Text style={style.title}>{`Hello,User !`}</Text>
+      <Text style={style.title}>{`Hello,${name || ""} !`}</Text>
       <Pressable
         style={style.bellBackground}
         onPress={() => Alert.alert("Noti")}
