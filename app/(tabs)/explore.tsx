@@ -48,9 +48,7 @@ const getJobRecommendations = (interests: string[]) => {
       { title: "Product Designer", company: "Creative Studios" },
       { title: "UX Researcher", company: "User Experience Ltd." },
     ],
-    "Machine Learning": [
-      { title: "ML Engineer", company: "AI Solutions" },
-      { title: "Computer Vision Specialist", company: "Vision Tech" },
+  
     ],
     "Cybersecurity": [
       { title: "Security Analyst", company: "SecureNet" },
