@@ -218,7 +218,16 @@ export default function ProfileScreen() {
       </View>
     </Modal>
   );
-
+const handleLogout = async () => {
+    try {
+      await auth().signOut();
+      // Reset the navigation stack and navigate to login
+      router.replace("/signIn");
+    } catch (error) {
+      console.error("Logout error:", error);
+      Alert.alert("Logout Error", "Could not log out. Please try again.");
+    }
+  };
   const renderJobRecommendations = () => {
     const recommendations = getJobRecommendations(interests);
 
@@ -509,5 +518,26 @@ const styles = StyleSheet.create({
     color: Colors.light.tabIconDefault,
     textAlign: "center",
     marginTop: 8,
+  },
+   logoutContainer: {
+    paddingHorizontal: moderateScale(50),
+    paddingVertical: moderateScale(16),
+    alignItems: "center",
+  },
+  logoutButton: {
+    backgroundColor: Colors.light.tint,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    width: "100%",
+  },
+  logoutButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    marginLeft: 8,
+    fontSize: 16,
   },
 });
