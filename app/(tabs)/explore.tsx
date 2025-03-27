@@ -1,24 +1,25 @@
-
 import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  Image,
   TouchableOpacity,
   ScrollView,
   Modal,
-  TextInput,
   Alert,
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import AntDesign from "@expo/vector-icons/AntDesign";
 import { Colors } from "@/constants/Colors";
 import ProfileComponent from "@/components/profile/profileComponent";
 import { moderateScale } from "@/constants/responsive";
 import auth from "@react-native-firebase/auth";
-import firestore from "@react-native-firebase/firestore";
+import firestore from "@react-native-firebase/firestore"; // Import the context
+import { useUserInterests } from "@/context/useInterestProvider";
+import RNInput from "@/components/RNInput";
+import Spacer from "@/components/spacer";
 
 const ALL_INTERESTS = [
   "Software Development",
@@ -35,87 +36,46 @@ const ALL_INTERESTS = [
   "DevOps",
 ];
 
-const getJobRecommendations = (interests: string[]) => {
-  const jobMap: { [key: string]: any[] } = {
-    "Software Development": [
-      { title: "Full Stack Developer", company: "Tech Innovations" },
-      { title: "Backend Engineer", company: "Cloud Solutions Inc." },
-    ],
-    "Data Science": [
-      { title: "Data Analyst", company: "Analytics Corp" },
-      { title: "Machine Learning Engineer", company: "AI Dynamics" },
-    ],
-    "UI/UX Design": [
-      { title: "Product Designer", company: "Creative Studios" },
-      { title: "UX Researcher", company: "User Experience Ltd." },
-    ],
-    "Machine Learning": [
-      { title: "ML Engineer", company: "AI Solutions" },
-      { title: "Computer Vision Specialist", company: "Vision Tech" },
-    ],
-    "Cybersecurity": [
-      { title: "Security Analyst", company: "SecureNet" },
-      { title: "Penetration Tester", company: "Cyber Defense Inc." },
-    ],
-    "Cloud Computing": [
-      { title: "Cloud Architect", company: "Cloud Systems" },
-      { title: "DevOps Engineer", company: "CloudOps" },
-    ],
-    "Product Management": [
-      { title: "Product Manager", company: "Product Labs" },
-      { title: "Product Owner", company: "Agile Solutions" },
-    ],
-    "Digital Marketing": [
-      { title: "Digital Marketing Specialist", company: "Marketing Pro" },
-      { title: "SEO Expert", company: "Search Solutions" },
-    ],
-    "Blockchain": [
-      { title: "Blockchain Developer", company: "Chain Technologies" },
-      { title: "Smart Contract Engineer", company: "Blockchain Innovations" },
-    ],
-    "Artificial Intelligence": [
-      { title: "AI Researcher", company: "AI Frontiers" },
-      { title: "NLP Engineer", company: "Language AI" },
-    ],
-    "Network Engineering": [
-      { title: "Network Engineer", company: "NetConnect" },
-      { title: "Network Security Specialist", company: "SecureNetwork" },
-    ],
-    "DevOps": [
-      { title: "DevOps Engineer", company: "Continuous Solutions" },
-      { title: "Site Reliability Engineer", company: "Reliability Tech" },
-    ],
-  };
-
-  return interests.flatMap((interest) => jobMap[interest] || []).slice(0, 4);
-};
-
 export default function ProfileScreen() {
   const [userDetails, setUserDetails] = useState<any>(null);
-  const [interests, setInterests] = useState<string[]>([]);
   const [isInterestModalVisible, setInterestModalVisible] = useState(false);
   const [availableInterests, setAvailableInterests] = useState(ALL_INTERESTS);
   const [isLoading, setIsLoading] = useState(true);
-  
+  const [skills, setSkills] = useState<string>("");
+  const [education, setEducation] = useState<string>("");
+  const [otherDetails, setOtherDetails] = useState<string>("");
+
+  // Use the UserInterests context
+  const { interests, setInterests, saveUserInterests, fetchUserInterests } =
+    useUserInterests();
+
   const router = useRouter();
 
   useEffect(() => {
     const fetchUserDetails = async () => {
       setIsLoading(true);
       const user = auth().currentUser;
-
+  
       if (user) {
         try {
           const userDoc = await firestore().collection("users").doc(user.uid).get();
-
+  
           if (userDoc.exists) {
             const userData = userDoc.data();
             setUserDetails(userData);
+  
+            // Fetch interests using the context method
+            await fetchUserInterests();
             
-            // Load interests from Firestore if available
-            if (userData?.interests && Array.isArray(userData.interests)) {
-              setInterests(userData.interests);
-            }
+              // Load interests from Firestore if available
+              if (userData?.interests && Array.isArray(userData.interests)) {
+                setInterests(userData.interests);
+              }
+  
+            // Set form fields
+            setSkills(userData?.skills || "");
+            setEducation(userData?.education || "");
+            setOtherDetails(userData?.otherDetails || "");
           } else {
             console.log("No such document!");
           }
@@ -130,46 +90,63 @@ export default function ProfileScreen() {
         setIsLoading(false);
       }
     };
-
+  
     fetchUserDetails();
   }, []);
+  
 
-  const saveInterestsToFirestore = async (newInterests: string[]) => {
-    const user = auth().currentUser;
-    
-    if (!user) {
-      Alert.alert("Error", "You must be signed in to save interests");
-      return false;
-    }
-    
-    try {
-      await firestore()
-        .collection("users")
-        .doc(user.uid)
-        .update({
-          interests: newInterests,
-          updatedAt: firestore.FieldValue.serverTimestamp(),
-        });
-      return true;
-    } catch (error) {
-      console.error("Error saving interests: ", error);
-      Alert.alert("Error", "Failed to save your interests");
-      return false;
-    }
-  };
 
   const toggleInterest = (interest: string) => {
     const newInterests = interests.includes(interest)
       ? interests.filter((i) => i !== interest)
       : [...interests, interest];
-    
+
     setInterests(newInterests);
   };
 
   const handleSaveInterests = async () => {
-    const success = await saveInterestsToFirestore(interests);
+    const success = await saveUserInterests(interests);
     if (success) {
       setInterestModalVisible(false);
+    }
+  };
+
+  const handleSaveDetails = async () => {
+    const user = auth().currentUser;
+    if (user) {
+      try {
+        setIsLoading(true)
+        await firestore().collection("users").doc(user.uid).set(
+          {
+            skills,
+            education,
+            otherDetails,
+          },
+          { merge: true } // Merge ensures that existing data is not overwritten
+        );
+  
+        Alert.alert("Success", "Profile details updated!");
+      } catch (error) {
+        console.error("Error updating profile details:", error);
+        Alert.alert("Error", "Could not update profile details.");
+        setIsLoading(false)
+      }
+      finally{
+        setIsLoading(false)
+      }
+    }
+  };
+  
+
+  // New logout function
+  const handleLogout = async () => {
+    try {
+      await auth().signOut();
+      // Reset the navigation stack and navigate to login
+      router.replace("/signIn");
+    } catch (error) {
+      console.error("Logout error:", error);
+      Alert.alert("Logout Error", "Could not log out. Please try again.");
     }
   };
 
@@ -218,45 +195,6 @@ export default function ProfileScreen() {
       </View>
     </Modal>
   );
-const handleLogout = async () => {
-    try {
-      await auth().signOut();
-      // Reset the navigation stack and navigate to login
-      router.replace("/signIn");
-    } catch (error) {
-      console.error("Logout error:", error);
-      Alert.alert("Logout Error", "Could not log out. Please try again.");
-    }
-  };
-  const renderJobRecommendations = () => {
-    const recommendations = getJobRecommendations(interests);
-
-    return (
-      <View style={styles.recommendationsContainer}>
-        <Text style={styles.sectionTitle}>Job Recommendations</Text>
-        {recommendations.length > 0 ? (
-          recommendations.map((job, index) => (
-            <TouchableOpacity 
-              key={index} 
-              style={styles.jobRecommendationItem}
-              onPress={() => Alert.alert(`${job.title}`, `Apply to ${job.company}`)}
-            >
-              <Text style={styles.jobTitle}>{job.title}</Text>
-              <Text style={styles.jobCompany}>{job.company}</Text>
-              <View style={styles.applyButtonContainer}>
-                <Text style={styles.applyButtonText}>Apply</Text>
-                <Ionicons name="arrow-forward" size={16} color={Colors.light.tint} />
-              </View>
-            </TouchableOpacity>
-          ))
-        ) : (
-          <Text style={styles.noRecommendationsText}>
-            Add interests to get job recommendations
-          </Text>
-        )}
-      </View>
-    );
-  };
 
   if (isLoading) {
     return (
@@ -312,8 +250,46 @@ const handleLogout = async () => {
       </View>
 
       {/* Job Recommendations */}
-      {renderJobRecommendations()}
+      {/* {renderJobRecommendations()} */}
+      <Spacer />
+      <Spacer />
+      <View style={{ paddingHorizontal: moderateScale(16) }}>
+        <RNInput
+          placeholder="Skills eg. Java,React,AI"
+          value={skills}
+          onChangeText={(val: string) => {
+            setSkills(val);
+          }}
+        />
 
+        <RNInput
+          placeholder="Education"
+          value={education}
+          onChangeText={(val: string) => {
+            setEducation(val);
+          }}
+        />
+        <RNInput
+          placeholder="Other details eg. career gap etc."
+          value={otherDetails}
+          onChangeText={(val: string) => {
+            setOtherDetails(val);
+          }}
+        />
+      </View>
+      <View style={styles.saveContainer}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleSaveDetails}>
+          <AntDesign name="save" size={24} color="white" />
+          <Text style={styles.logoutButtonText}>Save</Text>
+        </TouchableOpacity>
+      </View>
+      {/* Logout Button */}
+      <View style={styles.logoutContainer}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={24} color="white" />
+          <Text style={styles.logoutButtonText}>Logout</Text>
+        </TouchableOpacity>
+      </View>
       {/* Interest Selection Modal */}
       {renderInterestModal()}
     </ScrollView>
@@ -327,17 +303,17 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: "white",
   },
   profileHeader: {
     alignItems: "center",
-    justifyContent:'center',
+    justifyContent: "center",
     padding: 16,
     borderBottomWidth: 0.5,
     borderBottomColor: "#E0E0E0",
-    marginTop:moderateScale(80),
+    marginTop: moderateScale(80),
   },
   avatarText: {
     width: 80,
@@ -358,12 +334,12 @@ const styles = StyleSheet.create({
     borderRadius: 40,
   },
   userDetails: {
-    paddingVertical:moderateScale(10)
+    paddingVertical: moderateScale(10),
   },
   userName: {
     fontSize: moderateScale(18),
     fontWeight: "bold",
-    textAlign:'center'
+    textAlign: "center",
   },
   editProfileButton: {
     marginTop: moderateScale(8),
@@ -371,8 +347,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: moderateScale(12),
     backgroundColor: Colors.light.tint,
     borderRadius: moderateScale(20),
-    justifyContent:'center',
-    alignItems:'center'
+    justifyContent: "center",
+    alignItems: "center",
   },
   editProfileButtonText: {
     color: "white",
@@ -519,7 +495,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 8,
   },
-   logoutContainer: {
+  saveContainer: {
+    paddingHorizontal: moderateScale(50),
+    alignItems: "center",
+  },
+  logoutContainer: {
     paddingHorizontal: moderateScale(50),
     paddingVertical: moderateScale(16),
     alignItems: "center",
