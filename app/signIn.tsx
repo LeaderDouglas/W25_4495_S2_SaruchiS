@@ -1,4 +1,4 @@
-import { View, Text, SafeAreaView, StyleSheet, Alert } from "react-native";
+import { View, Text, SafeAreaView, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import React, { useState } from "react";
 import { moderateScale } from "@/constants/responsive";
 import { Colors } from "@/constants/Colors";
@@ -15,56 +15,77 @@ export default function SignIn() {
   const [loading, setLoading] = useState<boolean>(false);
 
   const router = useRouter();
-
   const navigateToSignUp = () => {
     router.push("/signUp");
   };
 
+  const navigateToDashboard = () => {
+    router.push("/(tabs)/home");
+  };
+
   const handleSignIn = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please enter both email and password.");
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
     setLoading(true);
+
     try {
-      const userCredential = await auth().signInWithEmailAndPassword(email, password);
-      Alert.alert("Success", "Logged in successfully!");
-      router.push("/(tabs)/home"); // Navigate to home/dashboard
-    } catch (error) {
-      Alert.alert("Login Error", error.message);
+      await auth().signInWithEmailAndPassword(email, password);
+      navigateToDashboard();
+    } catch (error: any) {
+      console.log("Sign-in error:", error);
+      Alert.alert("Error", error.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
     <SafeAreaView style={style.container}>
       <StatusBar style="dark" />
       <View style={style.textContainer}>
-        <Text style={style.title}>Sign in now</Text>
+        <Text style={style.title}>{"Sign in now"}</Text>
         <Spacer />
-        <Text style={style.subtitle}>Please sign in to continue our app</Text>
+        <Text style={style.subtitle}>
+          {"Please sign in to continue our app"}
+        </Text>
       </View>
       <View style={style.inputContainer}>
         <RNInput
           placeholder="Email"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(val: string) => {
+            setEmail(val);
+          }}
         />
         <RNInput
           placeholder="Password"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(val: string) => {
+            setPassword(val);
+          }}
           secureTextEntry
         />
         <Spacer />
-        <RNButton title="Sign in" onPress={handleSignIn}  />
+        {loading ? ( // Show loader if loading is true
+          <ActivityIndicator size="large" color={Colors.light.primary} />
+        ) : (
+          <RNButton
+            title={"Sign in"}
+            onPress={handleSignIn} // Call handleSignIn on button press
+          />
+        )}
         <Spacer />
         <View style={{ alignItems: "center" }}>
           <Text style={{ color: Colors.light.greyText }}>
-            Don’t have an account?{" "}
-            <Text onPress={navigateToSignUp} style={{ color: "#FF7029", fontWeight: "500" }}>
-              Sign up
+            {"Don’t have an account? "}
+            <Text
+              onPress={navigateToSignUp}
+              style={{ color: "#FF7029", fontWeight: "500" }}
+            >
+              {"Sign up"}
             </Text>
           </Text>
         </View>
