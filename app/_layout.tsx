@@ -7,28 +7,61 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import "react-native-reanimated";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { UserInterestsProvider } from "@/context/useInterestProvider";
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
+// Firebase (optional, uncomment if using Firestore)
+// import { db } from "../firebase";
+// import { collection, addDoc } from "firebase/firestore";
+
+// Prevent splash screen from auto-hiding until fonts are loaded
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
+
+  // Load custom fonts
+  const [fontsLoaded, fontError] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
+  // Hide splash screen after fonts are loaded
   useEffect(() => {
-    if (loaded) {
+    if (fontsLoaded) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [fontsLoaded]);
 
-  if (!loaded) {
+  // Example Firestore integration (optional)
+  const initializeFirestoreData = useCallback(async () => {
+    try {
+      // await addDoc(collection(db, "users"), {
+      //   name: "John Doe",
+      //   createdAt: new Date(),
+      // });
+      console.log("Firestore initialized.");
+    } catch (error) {
+      console.error("Error initializing Firestore: ", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      initializeFirestoreData(); // optional
+    }
+  }, [fontsLoaded]);
+
+  // Handle font loading error
+  if (fontError) {
+    console.error("Font loading error:", fontError);
+    return null;
+  }
+
+  // Show nothing until fonts are ready
+  if (!fontsLoaded) {
     return null;
   }
 
