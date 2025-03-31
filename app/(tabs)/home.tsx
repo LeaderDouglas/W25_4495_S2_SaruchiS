@@ -2,13 +2,59 @@ import { HomeCategory, HomeTopBar, JobRecommendation } from "@/components/home";
 import Spacer from "@/components/spacer";
 import { moderateScale } from "@/constants/responsive";
 import { useEffect, useState } from "react";
-import {SafeAreaView} from "react-native";
+import { SafeAreaView, Alert } from "react-native";
 import auth from "@react-native-firebase/auth";
 import firestore from "@react-native-firebase/firestore";
+import { JobRecommendationProps, generateJobRecommendations } from "@/utils/aiData";
+import { useUserInterests } from "@/context/useInterestProvider";
+ // Import the context
 
 export default function HomeScreen() {
   const [userDetails, setUserDetails] = useState<any>(null);
-  console.log("🚀 ~ HomeScreen ~ userDetails:", userDetails)
+  const [jobRecommendations, setJobRecommendations] = useState<
+    JobRecommendationProps[]
+  >([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Use the UserInterests context
+  const { interests, fetchUserInterests } = useUserInterests();
+
+  // Fallback default interests
+  const DEFAULT_INTERESTS = [
+    "Software Development", 
+    "Cloud Computing", 
+    "Product Management"
+  ];
+
+  async function fetchRecommendations(interests?: string[]) {
+    // Use provided interests or fallback to default
+    const interestsToUse = interests?.length 
+      ? interests 
+      : DEFAULT_INTERESTS;
+
+    setIsLoading(true);
+    try {
+      const apiKey = "replace with api key";
+
+      const recommendations = await generateJobRecommendations(
+        interestsToUse,
+        apiKey,
+        userDetails?.skills || "",
+        userDetails?.education || "",
+        userDetails?.otherDetails || "" 
+      );
+
+      setJobRecommendations(recommendations);
+    } catch (error) {
+      console.error("Failed to fetch recommendations:", error);
+      Alert.alert(
+        "Recommendation Error",
+        "Unable to generate job recommendations. Please try again later."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
     const fetchUserDetails = async () => {
@@ -16,17 +62,23 @@ export default function HomeScreen() {
 
       if (user) {
         try {
-          const userDoc = await firestore().collection("users").doc(user.uid).get();
+          const userDoc = await firestore()
+            .collection("users")
+            .doc(user.uid)
+            .get();
 
           if (userDoc.exists) {
             const userData = userDoc.data();
             setUserDetails(userData);
-           
+
+            // Fetch interests using the context method
+            await fetchUserInterests();
           } else {
             console.log("No such document!");
           }
         } catch (error) {
           console.error("Error fetching user details: ", error);
+          Alert.alert("Oops!", "Error in fetching details");
         }
       } else {
         console.log("No user is signed in.");
@@ -36,13 +88,19 @@ export default function HomeScreen() {
     fetchUserDetails();
   }, []);
 
+  // Fetch recommendations whenever interests change
+  useEffect(() => {
+    fetchRecommendations(interests);
+  }, [interests]);
+
   return (
     <SafeAreaView style={{ flex: 1, marginTop: moderateScale(40) }}>
-      <HomeTopBar name={userDetails?.name || ""}/>
+      <HomeTopBar name={userDetails?.name || ""} />
       <Spacer />
-      <HomeCategory />
-      <Spacer />
-      <JobRecommendation />
+      <JobRecommendation
+        recommendations={jobRecommendations}
+        isLoading={isLoading}
+      />
     </SafeAreaView>
   );
 }
