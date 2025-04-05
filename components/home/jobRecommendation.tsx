@@ -1,135 +1,180 @@
+
+import React from "react";
 import { Colors } from "@/constants/Colors";
-import { View, Text, StyleSheet, Pressable, FlatList } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  FlatList,
+  ActivityIndicator,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { moderateScale } from "@/constants/responsive";
 
-const data = [
-  {
-    jobType: "UI/UX Designer",
-    company: "AirBnb",
-    location: "United States",
-    category: "Full Time",
-    salary: "$2000",
-  },
-  {
-    jobType: "Software Engineer",
-    company: "Google",
-    location: "California, USA",
-    category: "Full Time",
-    salary: "$5000",
-  },
-  {
-    jobType: "Data Scientist",
-    company: "Facebook",
-    location: "New York, USA",
-    category: "Full Time",
-    salary: "$4500",
-  },
-  {
-    jobType: "Product Manager",
-    company: "Amazon",
-    location: "Seattle, USA",
-    category: "Full Time",
-    salary: "$6000",
-  },
-  {
-    jobType: "Graphic Designer",
-    company: "Adobe",
-    location: "San Francisco, USA",
-    category: "Part Time",
-    salary: "$2500",
-  },
-  {
-    jobType: "DevOps Engineer",
-    company: "Microsoft",
-    location: "Redmond, USA",
-    category: "Full Time",
-    salary: "$5500",
-  },
-  {
-    jobType: "Front-End Developer",
-    company: "Spotify",
-    location: "London, UK",
-    category: "Full Time",
-    salary: "$4000",
-  },
-  {
-    jobType: "Backend Developer",
-    company: "Twitter",
-    location: "San Francisco, USA",
-    category: "Full Time",
-    salary: "$4800",
-  },
-  {
-    jobType: "Data Analyst",
-    company: "Netflix",
-    location: "Los Angeles, USA",
-    category: "Full Time",
-    salary: "$3500",
-  },
-  {
-    jobType: "Mobile App Developer",
-    company: "Apple",
-    location: "Cupertino, USA",
-    category: "Full Time",
-    salary: "$7000",
-  },
-];
+// Job Recommendation Interface (matching the one in HomeScreen)
+interface JobRecommendation {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  salary: string;
+  skills: string[];
+  description: string;
+  matchPercentage: number;
+}
 
-export default function JobRecommendation() {
+interface JobRecommendationProps {
+  recommendations: JobRecommendation[];
+  isLoading?: boolean;
+  refreshing?: boolean;
+  handleRefresh?: () => void;
+}
+
+export default function JobRecommendation({
+  recommendations = [],
+  isLoading = false,
+  refreshing,
+  handleRefresh,
+}: JobRecommendationProps) {
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.light.tint} />
+        <Text style={styles.loadingText}>
+          Generating Job Recommendations...
+        </Text>
+      </View>
+    );
+  }
+
+  // Render empty state if no recommendations
+  if (!recommendations || recommendations.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No job recommendations available</Text>
+      </View>
+    );
+  }
+
   return (
     <>
       <View style={styles.container}>
-        <Text style={styles.category}>{"Job Recommendation"}</Text>
-        <Pressable style={styles.seeAllPressable}>
-          <Text style={styles.seeAll}>{"See all"}</Text>
-        </Pressable>
+        <Text style={styles.category}>Job Recommendations</Text>
+        {/* <Pressable style={styles.seeAllPressable}>
+          <Text style={styles.seeAll}>See all</Text>
+        </Pressable> */}
       </View>
       <FlatList
-        data={data}
+        data={recommendations}
         showsVerticalScrollIndicator={false}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
         contentContainerStyle={styles.listContainer}
         renderItem={({ item }) => {
           return (
             <View style={styles.item}>
               <View style={styles.jobHeader}>
-                <Text style={styles.jobType}>{item.jobType}</Text>
+                <Text style={styles.jobType}>{item.title}</Text>
                 <Text style={styles.company}>{item.company}</Text>
               </View>
-              
+
               <View style={styles.jobDetails}>
                 <View style={styles.detailItem}>
-                  <Ionicons name="location-outline" size={16} color={Colors.light.tabIconDefault} />
+                  <Ionicons
+                    name="location-outline"
+                    size={16}
+                    color={Colors.light.tabIconDefault}
+                  />
                   <Text style={styles.detailText}>{item.location}</Text>
                 </View>
                 <View style={styles.detailItem}>
-                  <Ionicons name="time-outline" size={16} color={Colors.light.tabIconDefault} />
-                  <Text style={styles.detailText}>{item.category}</Text>
+                  <Ionicons
+                    name="stats-chart-outline"
+                    size={16}
+                    color={Colors.light.tabIconDefault}
+                  />
+                  <Text style={styles.detailText}>
+                    {item.matchPercentage}% Match
+                  </Text>
                 </View>
                 <View style={styles.detailItem}>
-                  <Ionicons name="cash-outline" size={16} color={Colors.light.tabIconDefault} />
+                  <Ionicons
+                    name="cash-outline"
+                    size={16}
+                    color={Colors.light.tabIconDefault}
+                  />
                   <Text style={styles.detailText}>{item.salary}/month</Text>
                 </View>
+              </View>
+
+              {/* Optional: Skills Chip */}
+              <View style={styles.skillsContainer}>
+                {item.skills.slice(0, 3).map((skill, index) => (
+                  <View key={index} style={styles.skillChip}>
+                    <Text style={styles.skillText}>{skill}</Text>
+                  </View>
+                ))}
               </View>
             </View>
           );
         }}
-        keyExtractor={(item, index) => index.toString()}
+        keyExtractor={(item) => item.id}
       />
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: moderateScale(20),
+  },
+  loadingText: {
+    marginTop: moderateScale(10),
+    color: Colors.light.tabIconDefault,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: moderateScale(20),
+  },
+  emptyText: {
+    color: Colors.light.tabIconDefault,
+    fontSize: moderateScale(16),
+  },
+
+  // New skills container
+  skillsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: moderateScale(10),
+    gap: moderateScale(8),
+  },
+  skillChip: {
+    backgroundColor: Colors.light.background,
+    paddingHorizontal: moderateScale(8),
+    paddingVertical: moderateScale(4),
+    borderRadius: moderateScale(12),
+    borderWidth: 1,
+    borderColor: Colors.light.tabIconDefault,
+  },
+  skillText: {
+    fontSize: moderateScale(10),
+    color: Colors.light.tabIconDefault,
+  },
   container: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: moderateScale(10),
-    paddingHorizontal:  moderateScale(16),
+    paddingHorizontal: moderateScale(16),
   },
   category: {
-    fontSize:  moderateScale(18),
+    fontSize: moderateScale(18),
     fontWeight: "bold",
     color: Colors.light.text,
   },
@@ -146,7 +191,7 @@ const styles = StyleSheet.create({
   },
   item: {
     backgroundColor: "white",
-    padding:  moderateScale(16),
+    padding: moderateScale(16),
     borderRadius: moderateScale(10),
     marginBottom: moderateScale(10),
     borderWidth: 0.5,
@@ -166,14 +211,15 @@ const styles = StyleSheet.create({
     color: Colors.light.tabIconDefault,
   },
   jobDetails: {
-    flexDirection: "row",
+    // flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    // alignItems: "center",
+    flexWrap: "wrap",
   },
   detailItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 10,
   },
   detailText: {
     fontSize: 12,
