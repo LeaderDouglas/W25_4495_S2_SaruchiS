@@ -16,7 +16,7 @@ import { Colors } from "@/constants/Colors";
 import ProfileComponent from "@/components/profile/profileComponent";
 import { moderateScale } from "@/constants/responsive";
 import auth from "@react-native-firebase/auth";
-import firestore from "@react-native-firebase/firestore"; // Import the context
+import firestore from "@react-native-firebase/firestore"; 
 import { useUserInterests } from "@/context/useInterestProvider";
 import RNInput from "@/components/RNInput";
 import Spacer from "@/components/spacer";
@@ -44,9 +44,8 @@ export default function ProfileScreen() {
   const [skills, setSkills] = useState<string>("");
   const [education, setEducation] = useState<string>("");
   const [otherDetails, setOtherDetails] = useState<string>("");
-  const [country, setCountry] = useState<string>("");
 
-  // Use the UserInterests context
+  
   const { interests, setInterests, saveUserInterests, fetchUserInterests } =
     useUserInterests();
 
@@ -56,31 +55,27 @@ export default function ProfileScreen() {
     const fetchUserDetails = async () => {
       setIsLoading(true);
       const user = auth().currentUser;
-
+  
       if (user) {
         try {
-          const userDoc = await firestore()
-            .collection("users")
-            .doc(user.uid)
-            .get();
-
+          const userDoc = await firestore().collection("users").doc(user.uid).get();
+  
           if (userDoc.exists) {
             const userData = userDoc.data();
             setUserDetails(userData);
-
+  
             // Fetch interests using the context method
             await fetchUserInterests();
-
-            // Load interests from Firestore if available
-            if (userData?.interests && Array.isArray(userData.interests)) {
-              setInterests(userData.interests);
-            }
-
+            
+              // Load interests from Firestore if available
+              if (userData?.interests && Array.isArray(userData.interests)) {
+                setInterests(userData.interests);
+              }
+  
             // Set form fields
             setSkills(userData?.skills || "");
             setEducation(userData?.education || "");
             setOtherDetails(userData?.otherDetails || "");
-            setCountry(userData?.country || "");
           } else {
             console.log("No such document!");
           }
@@ -95,9 +90,11 @@ export default function ProfileScreen() {
         setIsLoading(false);
       }
     };
-
+  
     fetchUserDetails();
   }, []);
+  
+
 
   const toggleInterest = (interest: string) => {
     const newInterests = interests.includes(interest)
@@ -118,27 +115,28 @@ export default function ProfileScreen() {
     const user = auth().currentUser;
     if (user) {
       try {
-        setIsLoading(true);
+        setIsLoading(true)
         await firestore().collection("users").doc(user.uid).set(
           {
             skills,
             education,
             otherDetails,
-            country,
           },
-          { merge: true } // Merge ensures that existing data is not overwritten
+          { merge: true }
         );
-
+  
         Alert.alert("Success", "Profile details updated!");
       } catch (error) {
         console.error("Error updating profile details:", error);
         Alert.alert("Error", "Could not update profile details.");
-        setIsLoading(false);
-      } finally {
-        setIsLoading(false);
+        setIsLoading(false)
+      }
+      finally{
+        setIsLoading(false)
       }
     }
   };
+  
 
   // New logout function
   const handleLogout = async () => {
@@ -207,7 +205,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.container}>
       <View style={styles.profileHeader}>
         <ProfileComponent
           firstName={userDetails?.name || "G"}
@@ -218,6 +216,14 @@ export default function ProfileScreen() {
           <Text style={styles.userName}>
             {`${userDetails?.name || "Guest"}`}
           </Text>
+          {/* <TouchableOpacity
+            style={styles.editProfileButton}
+            onPress={() => {
+              Alert.alert("Not available")
+            }}
+          >
+            <Text style={styles.editProfileButtonText}>Edit Profile</Text>
+          </TouchableOpacity> */}
         </View>
       </View>
 
@@ -270,19 +276,9 @@ export default function ProfileScreen() {
             setOtherDetails(val);
           }}
         />
-        <RNInput
-          placeholder="Country"
-          value={country}
-          onChangeText={(val: string) => {
-            setCountry(val);
-          }}
-        />
       </View>
       <View style={styles.saveContainer}>
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleSaveDetails}
-        >
+        <TouchableOpacity style={styles.logoutButton} onPress={handleSaveDetails}>
           <AntDesign name="save" size={24} color="white" />
           <Text style={styles.logoutButtonText}>Save</Text>
         </TouchableOpacity>
